@@ -17,7 +17,7 @@ public class SubclassBuilder {
         this.classProxy = classProxy;
     }
 
-    public SubclassBuilder intercept(String methodName, String value) {
+    public SubclassBuilder intercept(String methodName, Object value) {
         methods.put(methodName, args -> value);
         return this;
     }
