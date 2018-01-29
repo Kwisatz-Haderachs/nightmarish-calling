@@ -90,6 +90,34 @@ public class ReflectionUtils {
         Assertions.fail(String.format(pattern, args));
     }
 
+    public static Throwable assertInvokeThrows(
+            Map<String, List<Invokable>> methods,
+            Object delegate,
+            Class<?> expectedType,
+            String methodName,
+            Object... args) {
+        try {
+            invoke(methods, delegate, methodName, args);
+        } catch (Throwable actualException) {
+            if (expectedType.isInstance(actualException)) {
+                return actualException;
+            } else {
+                failFormat(
+                        "Expected `%s` to throw a `%s` but it threw `%s`",
+                        delegate.getClass(),
+                        expectedType.getSimpleName(),
+                        actualException.getClass().getSimpleName()
+                );
+            }
+        }
+        failFormat(
+                "Expected `%s` to throw a %s but it threw nothing",
+                delegate.getClass(),
+                expectedType.getSimpleName()
+        );
+        return null;
+    }
+
     public static Object invoke(Map<String, List<Invokable>> methods, Object delegate, String methodName, Object... args) throws Throwable {
         if (!methods.containsKey(methodName)) {
             failFormat(
