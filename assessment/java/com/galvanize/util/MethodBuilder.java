@@ -1,6 +1,5 @@
 package com.galvanize.util;
 
-import com.google.common.reflect.Invokable;
 import com.google.common.reflect.TypeToken;
 
 import java.lang.reflect.Method;
@@ -8,23 +7,16 @@ import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.galvanize.util.ReflectionUtils.DELIMITER;
+import static com.galvanize.util.ReflectionUtils.joinSimpleNames;
 import static com.galvanize.util.ReflectionUtils.simpleName;
-import static java.util.stream.Collectors.joining;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
-// TODO: since name is required, make this a constructor parameter
 public class MethodBuilder {
 
     private final Class declaringClass;
-    private boolean isStatic;
-    private Object returnType;
-    private Object[] parameterTypes;
+    private final MethodCriteria criteria = new MethodCriteria();
     private ReferenceType referenceType = ReferenceType.CLASS;
-    private String name;
-    private Visibility visibility;
-    private Class<? extends Throwable>[] exceptionTypes;
 
     public MethodBuilder(Class declaringClass) {
         this.declaringClass = declaringClass;
@@ -35,7 +27,8 @@ public class MethodBuilder {
     }
 
     public MethodBuilder named(String name) {
-        this.name = name;
+
+        this.criteria.setName(name);
         return this;
     }
 
@@ -44,27 +37,27 @@ public class MethodBuilder {
     }
 
     public MethodBuilder isStatic(boolean isStatic) {
-        this.isStatic = isStatic;
+        this.criteria.setStatic(isStatic);
         return this;
     }
 
     public MethodBuilder isPublic() {
-        visibility = Visibility.PUBLIC;
+        criteria.setVisibility(Visibility.PUBLIC);
         return this;
     }
 
     public MethodBuilder isProtected() {
-        visibility = Visibility.PROTECTED;
+        criteria.setVisibility(Visibility.PROTECTED);
         return this;
     }
 
     public MethodBuilder isPrivate() {
-        visibility = Visibility.PRIVATE;
+        criteria.setVisibility(Visibility.PRIVATE);
         return this;
     }
 
     public MethodBuilder isPackagePrivate() {
-        this.visibility = Visibility.PACKAGE_PRIVATE;
+        this.criteria.setVisibility(Visibility.PACKAGE_PRIVATE);
         return this;
     }
 
@@ -73,20 +66,22 @@ public class MethodBuilder {
     }
 
     public MethodBuilder returns(Type returnType) {
-        this.returnType = returnType;
+        this.criteria.setReturnType(returnType);
         return this;
     }
 
     public MethodBuilder returns(TypeToken returnType) {
-        this.returnType = returnType;
+        this.criteria.setReturnType(returnType);
+        return this;
+    }
+
+    public MethodBuilder withParameterCount(int numberOfParameters) {
+        criteria.setParameterCount(numberOfParameters);
         return this;
     }
 
     public MethodBuilder withParameters(Object... parameterTypes) {
-        this.parameterTypes = Arrays.stream(parameterTypes).map(type -> {
-            if (type instanceof ClassProxy) return ((ClassProxy) type).getDelegate();
-            return type;
-        }).toArray(Object[]::new);
+        this.criteria.setParameterTypes(parameterTypes);
         return this;
     }
 
@@ -101,149 +96,116 @@ public class MethodBuilder {
     }
 
     public Method build() {
-        String methodSignature = methodSignature();
 
-        Method rawMethod = Arrays.stream(declaringClass.getDeclaredMethods())
-                .filter(m -> m.getName().equals(name))
-                .filter(m -> {
-                    Type[] genericParameterTypes = m.getGenericParameterTypes();
-                    if (parameterTypes == null) parameterTypes = new Object[]{};
-                    if (parameterTypes.length != genericParameterTypes.length) return false;
+        List<Method> methods = Arrays.asList(declaringClass.getDeclaredMethods());
+        Method rawMethod;
+        if (criteria.getName().isPresent()) {
+            /*
+             * Returns the first method matching the specified name and parameter types.
+             * If no parameters are specified then it matches only methods with no arguments.
+             */
+            rawMethod = methods.stream()
+                    .filter(m -> m.getName().equals(criteria.getName().get()))
+                    .filter(m -> {
+                        Type[] actualParameterTypes = m.getGenericParameterTypes();
+                        TypeToken<?>[] specifiedParameterTypes= criteria.getParameterTypes()
+                                .orElse(new TypeToken[criteria.getParameterCount().orElse(0)]);
+                        return MethodMatcher.typesMatch(actualParameterTypes, specifiedParameterTypes);
+                    })
+                    .findFirst()
+                    .orElse(null);
 
-                    for (int i = 0; i < genericParameterTypes.length; i++) {
-                        Object actualType = genericParameterTypes[i];
-                        Object expectedType = parameterTypes[i];
-                        if (actualType.equals(expectedType)) continue; // TODO: change to isAssignableFrom?
-
-                        TypeToken<?> token = (TypeToken<?>) expectedType;
-                        if (!token.isSupertypeOf((Type) actualType)) return false;
-                    }
-                    return true;
-                })
-                .findFirst()
-                .orElse(null);
+            if (rawMethod != null) {
+                verifyVisibility(rawMethod);
+                verifyStatic(rawMethod);
+                verifyReturnType(rawMethod);
+                verifyExceptions(rawMethod);
+            }
+        } else {
+            rawMethod = new MethodMatcher(criteria).find(methods);
+        }
 
         if (rawMethod == null) {
             failFormat(
                     "Expected the %s `%s` to define a method with the signature `%s`",
                     referenceType.getName(),
                     declaringClass.getSimpleName(),
-                    methodSignature
+                    criteria.methodSignature()
             );
         }
-
-        Invokable<?, Object> method = Invokable.from(rawMethod);
-        verifyVisibility(method);
-        verifyStatic(method);
-        verifyReturnType(rawMethod);
-        verifyExceptions(rawMethod);
 
         return rawMethod;
     }
 
     private void verifyExceptions(Method method) {
-        if (exceptionTypes == null) return;
-        List<Class> declaredExceptionTypes = Arrays.asList(method.getExceptionTypes());
-        boolean matches = true;
-        if (exceptionTypes.length != declaredExceptionTypes.size()) matches = false;
-
-        for (Class throwableClass : exceptionTypes) {
-            if (!declaredExceptionTypes.contains(throwableClass)) {
-                matches = false;
-                break;
+        criteria.getExceptionTypes().ifPresent(specifiedTypes -> {
+            List<Class> declaredExceptionTypes = Arrays.asList(method.getExceptionTypes());
+            boolean matches = specifiedTypes.length == declaredExceptionTypes.size();
+            if (matches) {
+                for (Class throwableClass : specifiedTypes) {
+                    if (!declaredExceptionTypes.contains(throwableClass)) {
+                        matches = false;
+                        break;
+                    }
+                }
             }
-        }
 
-        if (!matches) {
-            failFormat(
-                    "Expected `%s` to throw exactly `%s`%s but it %s",
-                    simpleName(declaringClass),
-                    Arrays.stream(exceptionTypes).map(ReflectionUtils::simpleName).collect(joining(DELIMITER)),
-                    exceptionTypes.length > 1 ? " (in any order)" : "",
-                    declaredExceptionTypes.isEmpty() ?
-                            "doesn't throw anything" :
-                            String.format(
-                                    "throws `%s`",
-                                    declaredExceptionTypes.stream()
-                                            .map(ReflectionUtils::simpleName)
-                                            .collect(joining(DELIMITER)).replace("<>", ""))
+            if (!matches) {
+                failFormat(
+                        "Expected `%s` to throw exactly `%s`%s but it %s",
+                        simpleName(declaringClass),
+                        joinSimpleNames(Arrays.stream(specifiedTypes)),
+                        specifiedTypes.length > 1 ? " (in any order)" : "",
+                        declaredExceptionTypes.isEmpty()
+                                ? "doesn't throw anything"
+                                : String.format("throws `%s`", joinSimpleNames(declaredExceptionTypes.stream()))
 
-            );
-        }
+                );
+            }
+        });
     }
 
     private void verifyReturnType(Method rawMethod) {
-        if (returnType != null) {
+        criteria.getReturnType().ifPresent(specifiedReturnType -> {
             assertEquals(
-                    simpleName(returnType),
+                    simpleName(specifiedReturnType),
                     simpleName(rawMethod.getGenericReturnType()),
                     String.format(
                             "Expected `%s.%s` to return an instance of type `%s`",
                             declaringClass.getSimpleName(),
-                            name,
-                            simpleName(returnType)
+                            rawMethod.getName(),
+                            simpleName(specifiedReturnType)
                     ));
-        }
+        });
     }
 
-    private void verifyStatic(Invokable<?, Object> method) {
-        if (isStatic && !method.isStatic()) {
-            fail(String.format(
-                    "Expected `%s.%s` to be static but it is not",
-                    declaringClass.getSimpleName(),
-                    name
-            ));
-        }
+    private void verifyStatic(Method method) {
+        criteria.isStatic().ifPresent(specifiedStatic -> {
+            if (!specifiedStatic.equals(MethodMatcher.isStatic(method))) {
+                failFormat(
+                        "Expected `%s.%s` to be static but it is not",
+                        declaringClass.getSimpleName(),
+                        method.getName()
+                );
+            }
+        });
     }
 
-    private void verifyVisibility(Invokable method) {
-        if (visibility == null) return;
-
-        if (!visibilityMatches(visibility, method)) {
-            failFormat(
-                    "Expected `%s.%s` to be %s but it is not",
-                    declaringClass.getSimpleName(),
-                    name,
-                    visibility.getName()
-            );
-        }
-    }
-
-    private boolean visibilityMatches(Visibility visibility, Invokable method) {
-        return !((visibility == Visibility.PUBLIC && !method.isPublic()) ||
-                (visibility == Visibility.PROTECTED && !method.isProtected()) ||
-                (visibility == Visibility.PACKAGE_PRIVATE && !method.isPackagePrivate()) ||
-                (visibility == Visibility.PRIVATE && !method.isPrivate())
-        );
+    private void verifyVisibility(Method method) {
+        criteria.getVisibility().ifPresent(specifiedVisibility -> {
+            if (Visibility.of(method) != specifiedVisibility) {
+                failFormat(
+                        "Expected `%s.%s` to be %s but it is not",
+                        declaringClass.getSimpleName(),
+                        method.getName(),
+                        specifiedVisibility.getName()
+                );
+            }
+        });
     }
 
     public String methodSignature() {
-        if (name == null || name.isEmpty()) {
-            failFormat("You must specify the name of the method on `%s`.", declaringClass.getSimpleName());
-        }
-        String paramString = "";
-        if (parameterTypes != null) {
-            paramString = Arrays.stream(parameterTypes)
-                    .map(ReflectionUtils::simpleName)
-                    .collect(joining(DELIMITER));
-        }
-
-        String exceptionsString = "";
-        if (exceptionTypes != null) {
-            exceptionsString = " throws " + Arrays.stream(exceptionTypes)
-                    .map(ReflectionUtils::simpleName)
-                    .collect(joining(DELIMITER));
-        }
-
-        return String.format(
-                "%s%s%s%s(%s)%s",
-                visibility != null ? visibility.toMethodSignatureString() : "",
-                isStatic ? "static " : "",
-                returnType == null ? "" : simpleName(returnType) + " ",
-                name,
-                paramString,
-                exceptionsString
-        );
+        return criteria.methodSignature();
     }
 
     private void failFormat(String message, Object... args) {
@@ -251,17 +213,17 @@ public class MethodBuilder {
     }
 
     public String getName() {
-        return name;
+        return criteria.getName().orElse(MethodCriteria.ANY_METHOD_NAME);
     }
 
     public MethodBuilder throwsExactly(Class<? extends Throwable>... exceptionTypes) {
-        this.exceptionTypes = exceptionTypes;
+        criteria.setExceptionTypes(exceptionTypes);
         return this;
     }
 
     @SuppressWarnings("unchecked")
     public MethodBuilder throwsExactly(ClassProxy... exceptionTypes) {
-        this.exceptionTypes = Arrays.stream(exceptionTypes).map(ClassProxy::getDelegate).toArray(Class[]::new);
+        criteria.setExceptionTypes(Arrays.stream(exceptionTypes).map(ClassProxy::getDelegate).toArray(Class[]::new));
         return this;
     }
 
