@@ -39,8 +39,8 @@ task assess(type: JavaExec) {
 }
 
 jar {
-    baseName = '01-java-testable-project'
-    version = '0.0.1-SNAPSHOT'
+    setProperty("archiveBaseName", '01-java-testable-project')
+    setProperty("archiveVersion", '0.0.1-SNAPSHOT')
 }
 
 dependencies {
