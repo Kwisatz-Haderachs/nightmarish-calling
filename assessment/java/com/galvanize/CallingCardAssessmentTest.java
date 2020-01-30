@@ -44,8 +44,7 @@ public class CallingCardAssessmentTest {
                 1,
                 card.invoke("getRemainingMinutes"),
                 String.format(
-                        "Expected card to have 1 remaining minute after adding %s dollars and then using %s",
-                        expectedRemainingMinutes,
+                        "Expected card to have 1 remaining minute after adding %s dollars and then using %s minutes",
                         dollars,
                         expectedRemainingMinutes - 1)
         );
