@@ -36,9 +36,9 @@ public class CellphoneTest {
         nokia.call("111-1111");
         nokia.tick().tick();
         nokia.endCall();
-        assertEquals(8 , nokia.getCard().getRemainingMinutes());
+        assertEquals(8 , nokia.card.getRemainingMinutes());
         samsung.call("678-9999");
-        assertEquals(0, samsung.getCard().getRemainingMinutes());
+        assertEquals(0, samsung.card.getRemainingMinutes());
         samsung.tick();
         assertEquals(false , samsung.isTalking());
     }
@@ -62,4 +62,20 @@ public class CellphoneTest {
         assertEquals("111-1111 (cut off at 1 minute)", samsung.getHistory());
     }
 
+    @Test
+    void testChangeCallingCard(){
+        CallingCard newCard = new CallingCard(5);
+        nokia.changeCallingCard(newCard);
+        assertEquals(20, nokia.card.getRemainingMinutes());
+    }
+
+    @Test
+    void testThreeway(){
+        nokia.call("777-7777");
+        nokia.tick();
+        nokia.call("111-1111");
+        nokia.tick();
+        nokia.endCall();
+        assertEquals("Three-way call: 777-7777 & 111-1111 (2 minutes)", nokia.getHistory());
+    }
 }

@@ -9,11 +9,11 @@ public class CellPhone {
     public CallingCard card;
     private boolean talkingStatus;
 
-    private List<String> history;
+    private List<PhoneCall> history;
     private int startMinutes;
 
     private int index;
-    private String phoneNumber;
+    private PhoneCall currentCall;
 
     public CellPhone(CallingCard card) {
         this.card = card;
@@ -26,16 +26,21 @@ public class CellPhone {
     }
 
     public void call(String phoneNumber) {
-        if(talkingStatus == true){return;}
-        talkingStatus = true;
-        this.phoneNumber = phoneNumber;
-        startMinutes = card.getRemainingMinutes();
+        if(talkingStatus == true){
+            currentCall.setThreeway(true);
+            currentCall.setSecondNumber(phoneNumber);
+        }else {
+            currentCall = new PhoneCall(phoneNumber);
+            talkingStatus = true;
+            startMinutes = card.getRemainingMinutes();
+        }
     }
 
     public void endCall() {
+        int min = startMinutes - card.getRemainingMinutes();
+        currentCall.setDurationMinutes(min);
         talkingStatus = false;
-        addToHistory(false);
-        phoneNumber = null;
+        history.add(currentCall);
     }
 
     public CellPhone tick() {
@@ -44,28 +49,12 @@ public class CellPhone {
             card.useMinutes(1);
         } else {
             talkingStatus = false;
-            addToHistory(true);
+            currentCall.setCutoffToTrue();
+            endCall();
         }
         return this;
     }
 
-    public void addToHistory(boolean cutOff){
-        if(cutOff == true) {
-            history.add(String.format(phoneNumber + " (cut off at 1 minute)"));
-        } else {
-            int min = startMinutes - card.getRemainingMinutes();
-            if (min == 1) {
-                history.add(String.format(phoneNumber + " (%d minute)", min));
-            } else {
-                history.add(String.format(phoneNumber + " (%d minutes)", min));
-            }
-        }
-    }
-
-
-    public CallingCard getCard() {
-        return card;
-    }
 
     public String getHistory() {
         String base = history.toString();
@@ -75,4 +64,9 @@ public class CellPhone {
         return sb.toString();
     }
 
+    public void changeCallingCard(CallingCard newCard) {
+        int dollars = (card.getRemainingMinutes() * card.getCentsPerMinute())/100;
+        card = newCard;
+        card.addDollars(dollars);
+    }
 }
