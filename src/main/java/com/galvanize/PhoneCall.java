@@ -27,8 +27,10 @@ public class PhoneCall {
     }
     @Override
     public String toString(){
-        if(cutoff == true){
+        if(cutoff == true && durationMinutes == 1){
             return String.format(phoneNumber + " (cut off at 1 minute)");
+        } else if (cutoff == true && durationMinutes > 1) {
+            return String.format(phoneNumber + " (cut off at %d minutes)", durationMinutes);
         }
         if(threeway == true){
             return String.format("Three-way call: " + phoneNumber + " & " + secondNumber + " (%d minutes)", durationMinutes);

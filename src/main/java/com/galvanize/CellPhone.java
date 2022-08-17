@@ -54,6 +54,7 @@ public class CellPhone {
             minutesElapsed++;
         } else {
             talkingStatus = false;
+            minutesElapsed++;
             currentCall.setCutoffToTrue();
             endCall();
         }

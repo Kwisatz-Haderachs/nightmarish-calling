@@ -14,7 +14,7 @@ public class CellphoneTest {
     void init() {
         CallingCard nokiaCard = new CallingCard(10);
         nokiaCard.addDollars(1);
-        CallingCard samsungCard = new CallingCard(11);
+        CallingCard samsungCard = new CallingCard(50);
         this.nokia = new CellPhone(nokiaCard, "512-2534");
         this.samsung = new CellPhone(samsungCard, "512-4534");
     }
@@ -66,6 +66,10 @@ public class CellphoneTest {
             samsung.call("111-1111");
             samsung.tick();
             assertEquals("111-1111 (cut off at 1 minute)", samsung.getHistory());
+            samsung.card.addDollars(2);
+            samsung.call("111-1111");
+            samsung.tick().tick().tick().tick();
+            assertEquals("111-1111 (cut off at 1 minute), 111-1111 (cut off at 4 minutes)", samsung.getHistory());
         }
     }
 
