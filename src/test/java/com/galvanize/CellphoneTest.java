@@ -34,9 +34,9 @@ public class CellphoneTest {
     @Test
     void testTick() {
         nokia.call("111-1111");
-        nokia.tick();
+        nokia.tick().tick();
         nokia.endCall();
-        assertEquals(9 , nokia.getCard().getRemainingMinutes());
+        assertEquals(8 , nokia.getCard().getRemainingMinutes());
         samsung.call("678-9999");
         assertEquals(0, samsung.getCard().getRemainingMinutes());
         samsung.tick();

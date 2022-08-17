@@ -1,11 +1,12 @@
 package com.galvanize;
 
+import javax.smartcardio.Card;
 import java.util.ArrayList;
 import java.util.List;
 
 public class CellPhone {
 
-    private CallingCard card;
+    public CallingCard card;
     private boolean talkingStatus;
 
     private List<String> history;
@@ -25,6 +26,7 @@ public class CellPhone {
     }
 
     public void call(String phoneNumber) {
+        if(talkingStatus == true){return;}
         talkingStatus = true;
         this.phoneNumber = phoneNumber;
         startMinutes = card.getRemainingMinutes();
@@ -36,14 +38,15 @@ public class CellPhone {
         phoneNumber = null;
     }
 
-    public void tick() {
-        if(talkingStatus == false){return;}
+    public CellPhone tick() {
+        if(talkingStatus == false){return this;}
         if(card.getRemainingMinutes() > 1) {
             card.useMinutes(1);
         } else {
             talkingStatus = false;
             addToHistory(true);
         }
+        return this;
     }
 
     public void addToHistory(boolean cutOff){
