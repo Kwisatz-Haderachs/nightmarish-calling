@@ -11,7 +11,7 @@ public class CellPhone {
 
     private List<PhoneCall> history;
     private List<Contact> contacts;
-    private int startMinutes;
+    private int minutesElapsed;
 
     private PhoneCall currentCall;
     private String ownerNumber;
@@ -37,13 +37,12 @@ public class CellPhone {
         }else {
             currentCall = new PhoneCall(phoneNumber);
             talkingStatus = true;
-            startMinutes = card.getRemainingMinutes();
+            minutesElapsed = 0;
         }
     }
 
     public void endCall() {
-        int min = startMinutes - card.getRemainingMinutes();
-        currentCall.setDurationMinutes(min);
+        currentCall.setDurationMinutes(minutesElapsed);
         talkingStatus = false;
         history.add(currentCall);
     }
@@ -52,6 +51,7 @@ public class CellPhone {
         if(talkingStatus == false){return this;}
         if(card.getRemainingMinutes() > 1) {
             card.useMinutes(1);
+            minutesElapsed++;
         } else {
             talkingStatus = false;
             currentCall.setCutoffToTrue();
@@ -77,12 +77,43 @@ public class CellPhone {
         return contacts.get(i);
     }
 
+    public Contact searchContactByName(String name){
+        for (Contact individualContact: contacts) {
+            if(individualContact.getName().equals(name)){
+                return individualContact;
+            }
+        }
+        return null;
+    }
+    public Contact searchContactByNumber(String number){
+        for (Contact individualContact: contacts) {
+            if(individualContact.getNumber().equals(number)){
+                return individualContact;
+            }
+        }
+        return null;
+    }
+
+    public String printContactCard(int i){
+        return String.format(contacts.get(i).getName() + ": " + contacts.get(i).getNumber());
+    }
+
+    public void printAllContacts(){
+        //could implement a comparable to search
+        contacts.sort(null);
+        for (Contact c: contacts) {
+            System.out.printf("%s: %s", c.getName(), c.getNumber());
+        }
+    }
+
     public String getHistory() {
-        String base = history.toString();
-        StringBuilder sb = new StringBuilder(base);
-        sb.deleteCharAt(base.length()-1);
-        sb.deleteCharAt(0);
-        return sb.toString();
+        return history.toString().substring(1, (history.toString().length()-1));
+//      alt return history.toString().replace("[", "").replace("]","");
+//        String base =history.toString();
+//        StringBuilder sb = new StringBuilder(base);
+//        sb.deleteCharAt(base.length()-1);
+//        sb.deleteCharAt(0);
+//        return sb.toString();
     }
 
     public void changeCallingCard(CallingCard newCard) {

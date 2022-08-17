@@ -15,8 +15,8 @@ public class PhoneCall {
         this.durationMinutes = durationMinutes;
     }
 
-    public void setThreeway(boolean threeway) {
-        this.threeway = threeway;
+    public void setThreeway(boolean startThreeway) {
+        this.threeway = startThreeway;
     }
 
     public void setSecondNumber(String number){

@@ -89,20 +89,42 @@ public class CellphoneTest {
         }
 
         @Test
-        void testAddContact(){
+        void testAddContact() {
             Contact x = new Contact("Archer", "512-5213");
             nokia.addConact(x);
             assertEquals("Archer", nokia.getContact(0).getName());
         }
 
         @Test
-        void testAddDuplicateContact(){
+        void testAddDuplicateContact() {
             Contact x = new Contact("Archer", "512-5213");
             assertEquals(null, nokia.getContact(0));
             nokia.addConact(x);
             assertEquals("Archer", nokia.getContact(0).getName());
             Contact y = new Contact("Sterling", "512-5213");
             nokia.addConact(y);
+        }
+
+        @Test
+        void testPrintConact() {
+            Contact x = new Contact("Archer", "512-5213");
+            nokia.addConact(x);
+            assertEquals("Archer: 512-5213", nokia.printContactCard(0));
+            nokia.printAllContacts();
+        }
+
+        @Test
+        void testSearchContactByName() {
+            Contact x = new Contact("Archer", "512-5213");
+            nokia.addConact(x);
+            assertEquals(x, nokia.searchContactByName("Archer"));
+        }
+
+        @Test
+        void testSearchContactByNumber() {
+            Contact x = new Contact("Archer", "512-5213");
+            nokia.addConact(x);
+            assertEquals(x, nokia.searchContactByNumber("512-5213"));
         }
     }
 }
