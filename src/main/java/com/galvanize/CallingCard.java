@@ -26,11 +26,7 @@ public class CallingCard {
     }
 
     public void useMinutes(int minutes) {
-        if(minutesOnCard - minutes < 0) {
-            minutesOnCard = 0;
-        } else {
-            minutesOnCard -= minutes;
-        }
+        minutesOnCard = Math.max(0, (minutesOnCard - minutes));
     }
 
 
