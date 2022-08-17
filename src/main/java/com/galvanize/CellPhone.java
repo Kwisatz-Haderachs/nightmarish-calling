@@ -10,17 +10,22 @@ public class CellPhone {
     private boolean talkingStatus;
 
     private List<PhoneCall> history;
+    private List<Contact> contacts;
     private int startMinutes;
 
-    private int index;
     private PhoneCall currentCall;
+    private String ownerNumber;
 
-    public CellPhone(CallingCard card) {
+    public CellPhone(CallingCard card, String selfNumber) {
         this.card = card;
         history = new ArrayList<>();
-        index = 0;
+        contacts = new ArrayList<>();
+        this.ownerNumber = selfNumber;
     }
 
+    public String cellPhoneNumber(){
+        return ownerNumber;
+    }
     public boolean isTalking() {
         return talkingStatus;
     }
@@ -55,6 +60,22 @@ public class CellPhone {
         return this;
     }
 
+    public void addConact(Contact c){
+        for (Contact a: contacts) {
+            if(c.getNumber() == a.getNumber()){
+                System.out.println("Contact already exists. Updated info?");
+                return;
+            }
+        }
+        contacts.add(c);
+    }
+    public Contact getContact(int i){
+        if(i > contacts.size()-1){
+            System.out.println("Contact doesn't exist");
+            return null;
+        }
+        return contacts.get(i);
+    }
 
     public String getHistory() {
         String base = history.toString();

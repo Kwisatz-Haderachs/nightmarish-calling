@@ -15,8 +15,8 @@ public class CellphoneTest {
         CallingCard nokiaCard = new CallingCard(10);
         nokiaCard.addDollars(1);
         CallingCard samsungCard = new CallingCard(11);
-        this.nokia = new CellPhone(nokiaCard);
-        this.samsung = new CellPhone(samsungCard);
+        this.nokia = new CellPhone(nokiaCard, "512-2534");
+        this.samsung = new CellPhone(samsungCard, "512-4534");
     }
 
     @Nested
@@ -28,7 +28,7 @@ public class CellphoneTest {
 
         @Test
         void testCall() {
-            nokia.call("678-9999");
+            nokia.call(samsung.cellPhoneNumber());
             assertEquals(true, nokia.isTalking());
             nokia.endCall();
             assertEquals(false, nokia.isTalking());
@@ -36,11 +36,11 @@ public class CellphoneTest {
 
         @Test
         void testTick() {
-            nokia.call("111-1111");
+            nokia.call(samsung.cellPhoneNumber());
             nokia.tick().tick();
             nokia.endCall();
             assertEquals(8, nokia.card.getRemainingMinutes());
-            samsung.call("678-9999");
+            samsung.call(nokia.cellPhoneNumber());
             assertEquals(0, samsung.card.getRemainingMinutes());
             samsung.tick();
             assertEquals(false, samsung.isTalking());
@@ -86,6 +86,23 @@ public class CellphoneTest {
             nokia.tick();
             nokia.endCall();
             assertEquals("Three-way call: 777-7777 & 111-1111 (2 minutes)", nokia.getHistory());
+        }
+
+        @Test
+        void testAddContact(){
+            Contact x = new Contact("Archer", "512-5213");
+            nokia.addConact(x);
+            assertEquals("Archer", nokia.getContact(0).getName());
+        }
+
+        @Test
+        void testAddDuplicateContact(){
+            Contact x = new Contact("Archer", "512-5213");
+            assertEquals(null, nokia.getContact(0));
+            nokia.addConact(x);
+            assertEquals("Archer", nokia.getContact(0).getName());
+            Contact y = new Contact("Sterling", "512-5213");
+            nokia.addConact(y);
         }
     }
 }
